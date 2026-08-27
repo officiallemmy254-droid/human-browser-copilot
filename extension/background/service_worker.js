@@ -9,10 +9,8 @@ let activeTabId = null;
 let isAgentPaused = false;
 let pendingCaptchaResolution = null;
 
-// Initialize Side Panel behavior
 chrome.sidePanel.setPanelBehavior({ openPanelOnActionClick: true }).catch(() => {});
 
-// Connect to Native Messaging Host
 function connectToNativeHost() {
   try {
     nativePort = chrome.runtime.connectNative(NATIVE_HOST_NAME);
@@ -24,11 +22,11 @@ function connectToNativeHost() {
     });
 
     nativePort.onDisconnect.addListener(() => {
-      console.log("[NativeHost] Disconnected. Will retry on demand.");
+      console.log("[NativeHost] Disconnected.");
       nativePort = null;
     });
   } catch (e) {
-    console.warn("[NativeHost] Connection failed (native host may not be running yet):", e);
+    console.warn("[NativeHost] Connection failed:", e);
   }
 }
 
@@ -43,10 +41,20 @@ function sendToNativeHost(msg) {
 
 async function getActiveTab() {
   const [tab] = await chrome.tabs.query({ active: true, lastFocusedWindow: true });
-  return tab;
+  if (tab) return tab;
+  const [anyTab] = await chrome.tabs.query({ active: true });
+  return anyTab;
 }
 
-// Router for commands coming from Antigravity / OpenCode via Native Messaging
+function isRestrictedUrl(url = "") {
+  return url.startsWith("chrome://") ||
+         url.startsWith("brave://") ||
+         url.startsWith("edge://") ||
+         url.startsWith("chrome-extension://") ||
+         url.startsWith("devtools://") ||
+         url.startsWith("about:");
+}
+
 async function handleAgentCommand(msg) {
   const { id, command, params = {} } = msg;
 
@@ -56,40 +64,60 @@ async function handleAgentCommand(msg) {
       return;
     }
 
-    const tab = await getActiveTab();
+    let tab = await getActiveTab();
+
+    // If command is navigate, execute navigation directly on active tab or create new tab
+    if (command === "navigate") {
+      if (!tab || !tab.id) {
+        tab = await chrome.tabs.create({ url: params.url, active: true });
+      } else {
+        await chrome.tabs.update(tab.id, { url: params.url });
+      }
+      activeTabId = tab.id;
+      sendToNativeHost({ id, ok: true, result: { navigated: true, url: params.url } });
+      return;
+    }
+
     if (!tab || !tab.id) {
-      sendToNativeHost({ id, ok: false, error: "No active Chrome tab found" });
+      sendToNativeHost({ id, ok: false, error: "No active browser tab found" });
       return;
     }
     activeTabId = tab.id;
 
-    // Attach debugger if not already attached
-    await attachToTab(activeTabId);
+    if (isRestrictedUrl(tab.url)) {
+      sendToNativeHost({
+        id,
+        ok: false,
+        error: `Current active tab is on an internal browser page (${tab.url}). Please navigate to a web URL first.`
+      });
+      return;
+    }
 
-    // Evaluate Security Policy
+    try {
+      await attachToTab(activeTabId);
+    } catch (e) {
+      console.warn("[Debugger] Attach warning:", e);
+    }
+
     const sec = evaluateActionSecurity(command, params, tab.url || "");
     if (sec.requiresApproval) {
-      // Broadcast Status to HUD
       chrome.tabs.sendMessage(activeTabId, {
         type: "STATUS_UPDATE",
         state: "paused",
         message: `Paused: ${sec.reason}`
       }).catch(() => {});
 
-      // Wait for user approval in Side Panel or CLI
       createApprovalRequest(command, params, sec.reason, async ({ approved }) => {
         if (!approved) {
           sendToNativeHost({ id, ok: false, error: `User rejected action: ${sec.reason}` });
           return;
         }
-        // User approved -> execute action
         const result = await executeAction(command, params, activeTabId);
         sendToNativeHost({ id, ok: true, result });
       });
       return;
     }
 
-    // Execute immediately for Tier 1 & Tier 2
     const result = await executeAction(command, params, activeTabId);
     sendToNativeHost({ id, ok: true, result });
 
@@ -107,15 +135,10 @@ async function executeAction(command, params, tabId) {
       setProfile(params.profile);
       return { profile: params.profile };
 
-    case "navigate":
-      await chrome.tabs.update(tabId, { url: params.url });
-      return { navigated: true, url: params.url };
-
     case "click": {
       let x = params.x;
       let y = params.y;
       if (x === undefined || y === undefined) {
-        // Resolve coordinates from selector or element ID via content script
         const res = await chrome.tabs.sendMessage(tabId, {
           type: "GET_ELEMENT_COORDINATES",
           id: params.elementId,
@@ -131,7 +154,6 @@ async function executeAction(command, params, tabId) {
 
     case "type": {
       if (params.selector || params.elementId) {
-        // First click to focus
         const res = await chrome.tabs.sendMessage(tabId, {
           type: "GET_ELEMENT_COORDINATES",
           id: params.elementId,
@@ -175,14 +197,11 @@ async function executeAction(command, params, tabId) {
   }
 }
 
-// Extension Internal Message Listener (Side Panel & Content Scripts)
 chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   if (msg.type === "CAPTCHA_DETECTED") {
-    console.log("[CAPTCHA DETECTED]", msg);
     sendToNativeHost({ event: "CAPTCHA_DETECTED", details: msg });
     sendResponse({ ok: true });
   } else if (msg.type === "CAPTCHA_RESOLVED") {
-    console.log("[CAPTCHA RESOLVED]", msg);
     if (pendingCaptchaResolution) {
       pendingCaptchaResolution({ resolved: true, reason: msg.reason });
       pendingCaptchaResolution = null;
@@ -206,7 +225,6 @@ chrome.runtime.onMessage.addListener((msg, sender, sendResponse) => {
   return true;
 });
 
-// Shortcut listener
 chrome.commands.onCommand.addListener((command) => {
   if (command === "emergency_takeover") {
     isAgentPaused = !isAgentPaused;
@@ -215,5 +233,4 @@ chrome.commands.onCommand.addListener((command) => {
   }
 });
 
-// Try initial native host connection
 connectToNativeHost();
