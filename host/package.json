@@ -3,8 +3,11 @@
   "version": "1.0.0",
   "description": "Native Messaging Host & MCP Server for Human Browser Copilot",
   "main": "dist/index.js",
+  "type": "module",
   "scripts": {
     "build": "tsup src/index.ts --format cjs,esm --dts",
+    "test": "vitest run",
+    "test:watch": "vitest",
     "start": "tsx src/index.ts",
     "mcp": "tsx src/index.ts --mcp",
     "native": "tsx src/index.ts --native"
@@ -20,6 +23,7 @@
     "@types/ws": "^8.5.14",
     "tsup": "^8.3.6",
     "tsx": "^4.19.3",
-    "typescript": "^5.7.3"
+    "typescript": "^5.7.3",
+    "vitest": "^4.1.11"
   }
 }

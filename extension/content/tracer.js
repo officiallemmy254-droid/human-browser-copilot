@@ -46,6 +46,64 @@
       chrome.runtime.sendMessage({ type: "TOGGLE_AGENT_PAUSE" });
     });
 
+    // Draggable & Persistence
+    let isDragging = false;
+    let dragStartX = 0;
+    let dragStartY = 0;
+
+    statusPill.addEventListener("mousedown", (e) => {
+      if (e.target.tagName === "BUTTON") return;
+      isDragging = true;
+      dragStartX = e.clientX - statusPill.getBoundingClientRect().left;
+      dragStartY = e.clientY - statusPill.getBoundingClientRect().top;
+      statusPill.style.cursor = "grabbing";
+    });
+
+    window.addEventListener("mousemove", (e) => {
+      if (isDragging) {
+        let x = e.clientX - dragStartX;
+        let y = e.clientY - dragStartY;
+        statusPill.style.left = x + "px";
+        statusPill.style.top = y + "px";
+        statusPill.style.right = "auto";
+        statusPill.style.bottom = "auto";
+      }
+
+      // Auto-dim / collapse when cursor is within 90px
+      if (statusPill && !isDragging) {
+        const rect = statusPill.getBoundingClientRect();
+        const centerX = rect.left + rect.width / 2;
+        const centerY = rect.top + rect.height / 2;
+        const dist = Math.sqrt(Math.pow(e.clientX - centerX, 2) + Math.pow(e.clientY - centerY, 2));
+        if (dist < 90) {
+          statusPill.classList.add("collapsed");
+        } else {
+          statusPill.classList.remove("collapsed");
+        }
+      }
+    });
+
+    window.addEventListener("mouseup", () => {
+      if (isDragging) {
+        isDragging = false;
+        statusPill.style.cursor = "grab";
+        chrome.storage.local.set({
+          humanBrowserPillPos: { left: statusPill.style.left, top: statusPill.style.top }
+        });
+      }
+    });
+
+    try {
+      chrome.storage.local.get("humanBrowserPillPos", (res) => {
+        if (res.humanBrowserPillPos && res.humanBrowserPillPos.left) {
+          statusPill.style.left = res.humanBrowserPillPos.left;
+          statusPill.style.top = res.humanBrowserPillPos.top;
+          statusPill.style.right = "auto";
+          statusPill.style.bottom = "auto";
+        }
+      });
+    } catch (e) {}
+
     window.addEventListener("resize", () => {
       if (canvasEl) {
         canvasEl.width = window.innerWidth;
@@ -74,10 +132,12 @@
           ctx.moveTo(trailPoints[0].x, trailPoints[0].y);
           for (let i = 1; i < trailPoints.length; i++) {
             const p = trailPoints[i];
-            const age = (now - p.time) / 350;
             ctx.lineTo(p.x, p.y);
           }
-          ctx.strokeStyle = "rgba(0, 242, 254, 0.4)";
+          const grad = ctx.createLinearGradient(trailPoints[0].x, trailPoints[0].y, trailPoints[trailPoints.length - 1].x, trailPoints[trailPoints.length - 1].y);
+          grad.addColorStop(0, "rgba(138, 43, 226, 0.4)");
+          grad.addColorStop(1, "rgba(0, 242, 254, 0.8)");
+          ctx.strokeStyle = grad;
           ctx.lineWidth = 3;
           ctx.lineCap = "round";
           ctx.lineJoin = "round";

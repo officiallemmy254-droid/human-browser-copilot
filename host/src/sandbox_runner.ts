@@ -21,7 +21,7 @@ function findChromeExecutable(): string {
   for (const p of commonPaths) {
     if (fs.existsSync(p)) return p;
   }
-  return "chrome"; // fallback to PATH
+  return "chrome";
 }
 
 export async function launchSandbox(options: { headless?: boolean; isEphemeral?: boolean } = {}): Promise<Page> {
@@ -88,35 +88,97 @@ export function getActiveSandboxPage(): Page | null {
   return activePage;
 }
 
-/**
- * Human-like mouse movement in Playwright
- */
 export async function sandboxHumanClick(page: Page, selector: string) {
-  const el = await page.waitForSelector(selector, { timeout: 8000 });
+  const el = await page.waitForSelector(selector, { timeout: 15000 });
   const box = await el.boundingBox();
   if (!box) throw new Error(`Element not visible: ${selector}`);
 
   const targetX = box.x + box.width / 2 + (Math.random() - 0.5) * 6;
   const targetY = box.y + box.height / 2 + (Math.random() - 0.5) * 6;
 
-  // Move smoothly
-  await page.mouse.move(targetX, targetY, { steps: 25 });
-  await page.waitForTimeout(50 + Math.random() * 50);
+  await page.mouse.move(targetX, targetY, { steps: 20 });
+  await page.waitForTimeout(50 + Math.random() * 40);
 
-  // Click
   await page.mouse.down();
   await page.waitForTimeout(60 + Math.random() * 40);
   await page.mouse.up();
 }
 
-/**
- * Human-like typing in Playwright
- */
 export async function sandboxHumanType(page: Page, selector: string, text: string) {
   await sandboxHumanClick(page, selector);
   for (const char of text) {
     await page.keyboard.type(char);
-    const delay = 40 + Math.random() * 70 + (char === " " ? 50 : 0);
+    const delay = 35 + Math.random() * 60 + (char === " " ? 40 : 0);
     await page.waitForTimeout(delay);
   }
+}
+
+export async function sandboxWaitFor(page: Page, condition: string, target: string, timeout: number = 30000) {
+  if (condition === "selector") {
+    await page.waitForSelector(target, { timeout });
+    return { ok: true };
+  } else if (condition === "text") {
+    await page.waitForFunction(t => document.body && document.body.innerText.includes(t), target, { timeout });
+    return { ok: true };
+  } else if (condition === "url") {
+    await page.waitForURL(target, { timeout });
+    return { ok: true };
+  } else if (condition === "network_idle") {
+    await page.waitForLoadState("networkidle", { timeout });
+    return { ok: true };
+  } else if (condition === "timeout" || condition === "sleep") {
+    const ms = Number(target) || timeout || 1000;
+    await page.waitForTimeout(ms);
+    return { sleptMs: ms };
+  }
+  throw new Error(`Unknown condition: ${condition}`);
+}
+
+export async function sandboxExtractData(page: Page, extractType: string, selector?: string, attributes?: string[]) {
+  if (extractType === "table") {
+    return await page.evaluate((sel) => {
+      const table = document.querySelector(sel || "table");
+      if (!table) return { error: "Table not found" };
+      const headers: string[] = [];
+      const rows: any[] = [];
+      table.querySelectorAll("thead th, tr:first-child th").forEach(th => headers.push(th.textContent?.trim() || ""));
+      table.querySelectorAll("tbody tr, tr").forEach(tr => {
+        const cells = tr.querySelectorAll("td, th");
+        if (!cells.length) return;
+        const row: any = {};
+        cells.forEach((c, idx) => {
+          const k = headers[idx] || `col_${idx}`;
+          row[k] = c.textContent?.trim() || "";
+        });
+        rows.push(row);
+      });
+      return { rowCount: rows.length, headers, rows };
+    }, selector);
+  } else if (extractType === "elements") {
+    return await page.evaluate(({ sel, attrs }) => {
+      const els = Array.from(document.querySelectorAll(sel || "a"));
+      return els.slice(0, 300).map((el, i) => {
+        const item: any = { index: i, tag: el.tagName.toLowerCase(), text: el.textContent?.trim().slice(0, 150) };
+        (attrs || ["href", "src", "value", "id"]).forEach((attr: string) => {
+          const v = el.getAttribute(attr);
+          if (v !== null) item[attr] = v;
+        });
+        return item;
+      });
+    }, { sel: selector, attrs: attributes });
+  } else if (extractType === "structured") {
+    return await page.evaluate(() => {
+      const scripts = Array.from(document.querySelectorAll('script[type="application/ld+json"]'));
+      const jsonLd = scripts.map(s => {
+        try { return JSON.parse(s.textContent || ""); } catch (e) { return null; }
+      }).filter(Boolean);
+      return { title: document.title, url: window.location.href, jsonLd };
+    });
+  } else if (extractType === "text") {
+    return await page.evaluate((sel) => {
+      const el = document.querySelector(sel || "body");
+      return el?.textContent?.trim() || "";
+    }, selector);
+  }
+  throw new Error(`Unknown extractType: ${extractType}`);
 }

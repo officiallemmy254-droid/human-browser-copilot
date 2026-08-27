@@ -7,87 +7,189 @@
   <link rel="stylesheet" href="sidepanel.css">
 </head>
 <body>
-  <div class="header">
-    <div class="logo">
-      <div class="status-orb" id="connection-orb"></div>
-      <span class="title">Human Browser</span>
-    </div>
-    <div class="badge" id="mode-badge">Active Tab</div>
-  </div>
+  <!-- Ambient Liquid Mesh Background Elements -->
+  <div class="ambient-glow glow-cyan"></div>
+  <div class="ambient-glow glow-purple"></div>
+  <div class="ambient-glow glow-blue"></div>
 
-  <!-- Alert Banner for CAPTCHA -->
-  <div class="alert-card hidden" id="captcha-alert">
-    <div class="alert-icon">🧩</div>
-    <div class="alert-content">
-      <div class="alert-title">CAPTCHA / Challenge Detected</div>
-      <div class="alert-desc">Agent is paused. Please solve the challenge in the main tab.</div>
-      <button class="btn btn-primary btn-sm" id="btn-captcha-resolved">I Solved It (Resume)</button>
-    </div>
-  </div>
+  <div class="app-container">
+    <!-- Header -->
+    <header class="liquid-header">
+      <div class="brand">
+        <div class="status-orb-container">
+          <div class="status-orb" id="connection-orb"></div>
+          <div class="status-orb-pulse"></div>
+        </div>
+        <div class="brand-text">
+          <span class="title">Human Browser</span>
+          <span class="subtitle">Agentic Copilot Runtime</span>
+        </div>
+      </div>
+      <div class="badges">
+        <span class="liquid-badge keepalive" id="keepalive-badge">⚡ Keepalive Active</span>
+        <span class="liquid-badge mode" id="mode-badge">Active Tab</span>
+      </div>
+    </header>
 
-  <!-- Pending Approval Card -->
-  <div class="approval-card hidden" id="approval-box">
-    <div class="approval-header">
-      <span class="shield-icon">🛡️</span>
-      <span class="approval-title">Human Approval Required</span>
-    </div>
-    <div class="approval-reason" id="approval-reason-text">...</div>
-    <div class="approval-params" id="approval-params-text">...</div>
-    <div class="approval-actions">
-      <button class="btn btn-success" id="btn-approve">Approve Action</button>
-      <button class="btn btn-danger" id="btn-reject">Reject</button>
-    </div>
-  </div>
+    <!-- Multi-Tab Concurrency Manager -->
+    <section class="liquid-card tab-manager-card">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="icon">🗂️</span> Concurrent Tabs & Workers
+        </div>
+        <button class="btn-icon" id="btn-refresh-tabs" title="Refresh Tabs">🔄</button>
+      </div>
+      <div class="tabs-list" id="tabs-list">
+        <div class="tab-chip active">
+          <span class="tab-dot active"></span>
+          <span class="tab-label">Current Tab</span>
+          <span class="tab-tag">ACTIVE</span>
+        </div>
+      </div>
+    </section>
 
-  <!-- Profile & Controls Section -->
-  <div class="section">
-    <div class="section-title">Behavior Profile</div>
-    <div class="profile-grid">
-      <button class="profile-btn active" data-profile="natural">🚶 Natural</button>
-      <button class="profile-btn" data-profile="speedy">🏎️ Speedy</button>
-      <button class="profile-btn" data-profile="deep_reader">📖 Reader</button>
-      <button class="profile-btn" data-profile="ghost_stealth">🥷 Ghost</button>
+    <!-- Quick Action Tools Bar -->
+    <div class="quick-tools-bar">
+      <button class="quick-btn" id="btn-quick-snapshot">
+        <span class="quick-icon">📸</span>
+        <span>Snapshot</span>
+      </button>
+      <button class="quick-btn" id="btn-quick-inspect">
+        <span class="quick-icon">🔍</span>
+        <span>Inspect DOM</span>
+      </button>
+      <button class="quick-btn" id="btn-quick-gc">
+        <span class="quick-icon">🧹</span>
+        <span>Memory GC</span>
+      </button>
+      <button class="quick-btn" id="btn-clear-log">
+        <span class="quick-icon">🗑️</span>
+        <span>Clear Log</span>
+      </button>
     </div>
-  </div>
 
-  <!-- Visual Overlay Toggles -->
-  <div class="section">
-    <div class="section-title">Visual HUD Toggles</div>
-    <div class="toggle-row">
-      <span>Laser Cursor Tracer</span>
-      <label class="switch">
-        <input type="checkbox" id="toggle-tracer" checked>
-        <span class="slider"></span>
-      </label>
-    </div>
-    <div class="toggle-row">
-      <span>Element Number Labels</span>
-      <label class="switch">
-        <input type="checkbox" id="toggle-highlighter" checked>
-        <span class="slider"></span>
-      </label>
-    </div>
-  </div>
-
-  <!-- Live Action & Thought Log -->
-  <div class="section flex-grow">
-    <div class="section-header">
-      <div class="section-title">Live Activity Log</div>
-      <button class="btn-clear" id="btn-clear-log">Clear</button>
-    </div>
-    <div class="log-container" id="log-container">
-      <div class="log-entry system">
-        <span class="time">--:--</span>
-        <span class="text">Human Browser Copilot initialized & ready.</span>
+    <!-- Alert Banner for CAPTCHA -->
+    <div class="liquid-alert captcha-alert hidden" id="captcha-alert">
+      <div class="alert-glow"></div>
+      <div class="alert-icon">🧩</div>
+      <div class="alert-content">
+        <div class="alert-title">CAPTCHA / Challenge Detected</div>
+        <div class="alert-desc">Agent is suspended. Please solve the challenge in the main tab to continue.</div>
+        <button class="liquid-btn btn-primary btn-sm" id="btn-captcha-resolved">I Solved It (Resume)</button>
       </div>
     </div>
-  </div>
 
-  <!-- Emergency Footer -->
-  <div class="footer">
-    <button class="btn btn-warning full-width" id="btn-takeover">
-      <span id="takeover-icon">⏸️</span> <span id="takeover-text">Emergency Pause (Esc)</span>
-    </button>
+    <!-- Long Task / Autonomous Batch Progress Card -->
+    <div class="liquid-card task-card hidden" id="task-card">
+      <div class="task-header">
+        <div class="task-title-group">
+          <div class="wave-spinner"></div>
+          <span class="task-title" id="task-name">Autonomous Batch Task</span>
+        </div>
+        <span class="liquid-badge step-badge" id="task-steps-badge">Step 0 / 0</span>
+      </div>
+      <div class="liquid-progress-container">
+        <div class="liquid-progress-bar" id="task-progress-fill" style="width: 0%">
+          <div class="liquid-shimmer"></div>
+        </div>
+      </div>
+      <div class="task-meta">
+        <span class="task-current-action" id="task-current-action">Initializing...</span>
+        <span class="task-timer" id="task-timer">00:00</span>
+      </div>
+      <div class="task-controls">
+        <button class="liquid-btn btn-glass" id="btn-task-pause">Pause Task</button>
+        <button class="liquid-btn btn-danger-glass" id="btn-task-cancel">Cancel Task</button>
+      </div>
+    </div>
+
+    <!-- Human Security Approval Modal Card -->
+    <div class="liquid-card approval-card hidden" id="approval-box">
+      <div class="approval-header">
+        <span class="shield-icon">🛡️</span>
+        <span class="approval-title">Human Sign-off Required</span>
+      </div>
+      <div class="approval-reason" id="approval-reason-text">...</div>
+      <div class="approval-params-wrapper">
+        <pre class="approval-params" id="approval-params-text">...</pre>
+      </div>
+      <div class="approval-actions">
+        <button class="liquid-btn btn-emerald" id="btn-approve">Approve Action</button>
+        <button class="liquid-btn btn-rose" id="btn-reject">Reject</button>
+      </div>
+    </div>
+
+    <!-- Kinematic Profile Selector -->
+    <section class="liquid-card">
+      <div class="card-title">
+        <span class="icon">🥷</span> Kinematic Kinematics Profile
+      </div>
+      <div class="profile-pills">
+        <button class="profile-pill active" data-profile="natural">
+          <span class="pill-dot"></span>
+          <span>🚶 Natural</span>
+        </button>
+        <button class="profile-pill" data-profile="speedy">
+          <span class="pill-dot"></span>
+          <span>🏎️ Speedy</span>
+        </button>
+        <button class="profile-pill" data-profile="deep_reader">
+          <span class="pill-dot"></span>
+          <span>📖 Reader</span>
+        </button>
+        <button class="profile-pill" data-profile="ghost_stealth">
+          <span class="pill-dot"></span>
+          <span>🥷 Stealth</span>
+        </button>
+      </div>
+    </section>
+
+    <!-- Visual HUD Toggles -->
+    <section class="liquid-card">
+      <div class="card-title">
+        <span class="icon">✨</span> Visual Overlays & Telemetry
+      </div>
+      <div class="toggle-group">
+        <div class="toggle-row">
+          <span class="toggle-label">Laser Cursor Tracer & Fluid Trails</span>
+          <label class="liquid-switch">
+            <input type="checkbox" id="toggle-tracer" checked>
+            <span class="liquid-slider"></span>
+          </label>
+        </div>
+        <div class="toggle-row">
+          <span class="toggle-label">Interactive Element Badges (#el_N)</span>
+          <label class="liquid-switch">
+            <input type="checkbox" id="toggle-highlighter" checked>
+            <span class="liquid-slider"></span>
+          </label>
+        </div>
+      </div>
+    </section>
+
+    <!-- Live Telemetry & Event Stream -->
+    <section class="liquid-card log-section flex-grow">
+      <div class="card-header">
+        <div class="card-title">
+          <span class="icon">📡</span> Live Telemetry & Event Log
+        </div>
+        <span class="log-status" id="log-status">Listening</span>
+      </div>
+      <div class="log-viewport" id="log-container">
+        <div class="log-entry system">
+          <span class="time">--:--</span>
+          <span class="text">Human Browser Liquid Morphism Copilot active & ready.</span>
+        </div>
+      </div>
+    </section>
+
+    <!-- Emergency Takeover Footer -->
+    <footer class="liquid-footer">
+      <button class="liquid-btn btn-takeover" id="btn-takeover">
+        <span class="takeover-icon" id="takeover-icon">⏸️</span>
+        <span class="takeover-text" id="takeover-text">Emergency Pause (Alt+Shift+X)</span>
+      </button>
+    </footer>
   </div>
 
   <script src="sidepanel.js"></script>

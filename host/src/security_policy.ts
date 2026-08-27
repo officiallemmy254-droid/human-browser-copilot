@@ -12,17 +12,26 @@ if (!fs.existsSync(LOG_DIR)) {
   fs.mkdirSync(LOG_DIR, { recursive: true });
 }
 
-export function logAuditEvent(action: string, params: any, result: any, isApproved: boolean = true) {
-  const entry = {
-    timestamp: new Date().toISOString(),
-    action,
-    params,
-    result,
-    isApproved
-  };
+import { recordActionAudit } from "./audit_logger.js";
+import { PermissionTier, classifyActionTier } from "./contracts/policy.js";
 
-  const line = JSON.stringify(entry) + "\n";
-  fs.appendFileSync(AUDIT_FILE, line, "utf8");
+export function logAuditEvent(action: string, params: any, result: any, isApproved: boolean = true) {
+  const tier = classifyActionTier(action);
+  const event = recordActionAudit({
+    taskId: params?.taskId || "task_default",
+    actionId: params?.actionId,
+    origin: params?.url || params?.origin || "about:blank",
+    actionType: action,
+    policyTier: tier,
+    policyDecision: isApproved ? "ALLOW" : "PROMPT",
+    approvalState: isApproved ? "APPROVED" : "PENDING",
+    executionResult: result
+  });
+
+  const line = JSON.stringify(event) + "\n";
+  try {
+    fs.appendFileSync(AUDIT_FILE, line, "utf8");
+  } catch (e) {}
 }
 
 /**

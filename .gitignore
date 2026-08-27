@@ -5,3 +5,10 @@ dist/
 .human-browser/
 temp/
 tmp/
+scratch/
+host/scratch_*.js
+patch.py
+*.env
+*.env.*
+.vscode/
+.idea/

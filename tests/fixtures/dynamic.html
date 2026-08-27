@@ -1,0 +1,22 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Dynamic Delayed Elements Fixture</title>
+</head>
+<body>
+  <h1>Dynamic Loading Page</h1>
+  <div id="loading-state">Loading data...</div>
+  <div id="content-container"></div>
+
+  <script>
+    setTimeout(() => {
+      document.getElementById("loading-state").style.display = "none";
+      const el = document.createElement("button");
+      el.id = "btn-delayed";
+      el.textContent = "Delayed Action Button";
+      document.getElementById("content-container").appendChild(el);
+    }, 1500);
+  </script>
+</body>
+</html>

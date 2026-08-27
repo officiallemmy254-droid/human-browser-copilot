@@ -1,0 +1,21 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Stale Elements Fixture</title>
+</head>
+<body>
+  <h1>Stale Element Test Page</h1>
+  <div id="container">
+    <button id="btn-target" class="initial-btn">Initial Target Button</button>
+  </div>
+  <button id="btn-mutate" onclick="mutateDOM()">Mutate Target</button>
+
+  <script>
+    function mutateDOM() {
+      const container = document.getElementById("container");
+      container.innerHTML = `<button id="btn-new" class="mutated-btn">Replaced Target Button</button>`;
+    }
+  </script>
+</body>
+</html>

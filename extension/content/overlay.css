@@ -7,8 +7,8 @@
   width: 18px;
   height: 18px;
   border-radius: 50%;
-  background: radial-gradient(circle, #00f2fe 0%, #4facfe 70%, rgba(79, 172, 254, 0) 100%);
-  box-shadow: 0 0 12px #00f2fe, 0 0 24px rgba(0, 242, 254, 0.6);
+  background: radial-gradient(circle, #00f2fe 0%, #8a2be2 70%, rgba(138, 43, 226, 0) 100%);
+  box-shadow: 0 0 15px #00f2fe, 0 0 25px rgba(138, 43, 226, 0.8);
   pointer-events: none;
   z-index: 2147483647;
   transform: translate(-50%, -50%);
@@ -32,7 +32,7 @@
   height: 12px;
   border-radius: 50%;
   border: 2px solid #00f2fe;
-  background: rgba(0, 242, 254, 0.25);
+  background: rgba(138, 43, 226, 0.4);
   pointer-events: none;
   z-index: 2147483647;
   transform: translate(-50%, -50%);
@@ -45,13 +45,14 @@
     height: 12px;
     opacity: 1;
     border-width: 3px;
+    box-shadow: 0 0 10px #00f2fe;
   }
   100% {
-    width: 50px;
-    height: 50px;
+    width: 60px;
+    height: 60px;
     opacity: 0;
     border-width: 1px;
-    box-shadow: 0 0 16px rgba(0, 242, 254, 0.8);
+    box-shadow: 0 0 20px rgba(138, 43, 226, 0.8), inset 0 0 15px rgba(0, 242, 254, 0.5);
   }
 }
 
@@ -88,10 +89,10 @@
   position: fixed;
   bottom: 20px;
   right: 20px;
-  background: rgba(15, 23, 42, 0.92);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.15);
+  background: rgba(15, 23, 42, 0.65);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
   box-shadow: 0 8px 32px rgba(0, 0, 0, 0.45);
   color: #f8fafc;
   padding: 8px 14px;
@@ -106,7 +107,21 @@
   user-select: none;
   pointer-events: auto;
   cursor: grab;
-  transition: opacity 0.2s, transform 0.2s;
+  transition: opacity 0.3s, transform 0.3s, width 0.3s, padding 0.3s;
+  overflow: hidden;
+  width: max-content;
+}
+
+#human-browser-status-pill.collapsed {
+  opacity: 0.5;
+  width: 24px;
+  padding: 8px;
+  gap: 0;
+}
+
+#human-browser-status-pill.collapsed #human-browser-status-text,
+#human-browser-status-pill.collapsed #human-browser-pause-btn {
+  display: none;
 }
 
 #human-browser-status-dot {
@@ -114,8 +129,9 @@
   height: 8px;
   border-radius: 50%;
   background: #10b981;
-  box-shadow: 0 0 8px #10b981;
+  box-shadow: 0 0 12px #10b981;
   animation: humanBrowserPulse 2s infinite;
+  flex-shrink: 0;
 }
 
 #human-browser-status-dot.busy {
