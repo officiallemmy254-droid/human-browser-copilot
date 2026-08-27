@@ -55,6 +55,15 @@ function isRestrictedUrl(url = "") {
          url.startsWith("about:");
 }
 
+async function ensureContentScripts(tabId) {
+  try {
+    await chrome.scripting.executeScript({
+      target: { tabId },
+      files: ["content/tracer.js", "content/highlighter.js", "content/captcha_detector.js"]
+    });
+  } catch (e) {}
+}
+
 async function handleAgentCommand(msg) {
   const { id, command, params = {} } = msg;
 
@@ -66,7 +75,6 @@ async function handleAgentCommand(msg) {
 
     let tab = await getActiveTab();
 
-    // If command is navigate, execute navigation directly on active tab or create new tab
     if (command === "navigate") {
       if (!tab || !tab.id) {
         tab = await chrome.tabs.create({ url: params.url, active: true });
@@ -139,11 +147,21 @@ async function executeAction(command, params, tabId) {
       let x = params.x;
       let y = params.y;
       if (x === undefined || y === undefined) {
-        const res = await chrome.tabs.sendMessage(tabId, {
+        let res = await chrome.tabs.sendMessage(tabId, {
           type: "GET_ELEMENT_COORDINATES",
           id: params.elementId,
           selector: params.selector
-        });
+        }).catch(() => null);
+
+        if (!res || !res.ok) {
+          await ensureContentScripts(tabId);
+          res = await chrome.tabs.sendMessage(tabId, {
+            type: "GET_ELEMENT_COORDINATES",
+            id: params.elementId,
+            selector: params.selector
+          }).catch(() => null);
+        }
+
         if (!res || !res.ok) throw new Error(`Element not found: ${params.selector || params.elementId}`);
         x = res.x;
         y = res.y;
@@ -158,7 +176,7 @@ async function executeAction(command, params, tabId) {
           type: "GET_ELEMENT_COORDINATES",
           id: params.elementId,
           selector: params.selector
-        });
+        }).catch(() => null);
         if (res && res.ok) {
           await humanClick(tabId, res.x, res.y);
         }
@@ -174,11 +192,17 @@ async function executeAction(command, params, tabId) {
     }
 
     case "inspect_dom": {
-      const res = await chrome.tabs.sendMessage(tabId, {
+      await ensureContentScripts(tabId);
+      let res = await chrome.tabs.sendMessage(tabId, {
         type: "HIGHLIGHT_ELEMENTS",
         limit: params.limit || 80
-      });
-      return res || { elements: [] };
+      }).catch(() => null);
+
+      if (!res) {
+        const tab = await chrome.tabs.get(tabId);
+        res = { title: tab.title, url: tab.url, elements: [] };
+      }
+      return res;
     }
 
     case "take_snapshot": {
