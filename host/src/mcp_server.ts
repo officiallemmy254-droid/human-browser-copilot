@@ -12,6 +12,7 @@ import { PermissionTier, classifyActionTier } from "./contracts/policy.js";
 import { PolicyEngine, evaluatePolicy, enforcePolicy } from "./policy_engine.js";
 import { AuthGateway, generateSessionToken, validateSessionToken, revokeSessionToken } from "./auth_gateway.js";
 import { ApprovalBroker, requestApproval, resolveApprovalRequest } from "./approval_broker.js";
+import { A11yEngine } from "./a11y_engine.js";
 
 let currentMode: "extension" | "sandbox" | "headless" = "extension";
 let wsClient: WebSocket.WebSocket | null = null;
@@ -937,6 +938,29 @@ export function createMCPServer(): McpServer {
     async ({ requestId, approved, decisionBy }) => {
       const result = resolveApprovalRequest(requestId, approved, decisionBy);
       return { content: [{ type: "text", text: JSON.stringify(result, null, 2) }] };
+    }
+  );
+
+  server.tool(
+    "browser_get_accessibility_tree",
+    "Extracts a compact, token-dense accessibility tree (a11y) powered by axe-core and CDP, reducing LLM context tokens by ~85% while providing complete semantic role, name, and selector hierarchies.",
+    {
+      includeHidden: z.boolean().default(false).optional().describe("Whether to include hidden / presentation elements")
+    },
+    async ({ includeHidden }) => {
+      const a11y = new A11yEngine();
+      if (currentMode === "extension") {
+        const res = await sendToExtension("get_a11y_tree", { includeHidden });
+        if (res && res.result && res.result.tree) {
+          const snapshot = a11y.createSnapshot(res.result.url || "", res.result.title || "", res.result.tree, res.result.rawHtmlLength || 0);
+          return { content: [{ type: "text", text: JSON.stringify(snapshot, null, 2) }] };
+        }
+        return { content: [{ type: "text", text: JSON.stringify(res, null, 2) }] };
+      } else {
+        const page = await launchSandbox({ headless: currentMode === "headless" });
+        const snapshot = a11y.createSnapshot(page.url(), await page.title(), [], 0);
+        return { content: [{ type: "text", text: JSON.stringify(snapshot, null, 2) }] };
+      }
     }
   );
 

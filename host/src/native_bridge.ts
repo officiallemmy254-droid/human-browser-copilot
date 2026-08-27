@@ -4,6 +4,7 @@ import { WebSocketServer, WebSocket } from "ws";
 const WS_PORT = 9333;
 let wsServer: WebSocketServer | null = null;
 let activeSockets: Set<WebSocket> = new Set();
+let extensionSocket: WebSocket | null = null;
 const pendingRequests = new Map<number, { resolve: (val: any) => void; reject: (err: any) => void; timer: NodeJS.Timeout }>();
 
 /**
@@ -59,9 +60,18 @@ function handleIncomingChromeMessage(msg: any, onEvent?: (msg: any) => void) {
 }
 
 /**
- * Sends 32-bit length-prefixed JSON packet to Chrome Extension stdio
+ * Sends 32-bit length-prefixed JSON packet to Chrome Extension stdio or active WebSocket
  */
 export function sendToExtension(msg: any): boolean {
+  // Try direct Extension WebSocket first if available
+  if (extensionSocket && extensionSocket.readyState === WebSocket.OPEN) {
+    try {
+      extensionSocket.send(JSON.stringify(msg));
+      return true;
+    } catch (e) {}
+  }
+
+  // Fallback to stdio
   try {
     const jsonStr = JSON.stringify(msg);
     const payload = Buffer.from(jsonStr, "utf8");
@@ -79,7 +89,7 @@ export function sendToExtension(msg: any): boolean {
 /**
  * Dispatches a command to the extension and returns a promise for the reply
  */
-export function sendToExtensionAsync(cmd: any, timeoutMs: number = 300000): Promise<any> {
+export function sendToExtensionAsync(cmd: any, timeoutMs: number = 60000): Promise<any> {
   return new Promise((resolve, reject) => {
     const id = cmd.id;
     const timer = setTimeout(() => {
@@ -94,13 +104,13 @@ export function sendToExtensionAsync(cmd: any, timeoutMs: number = 300000): Prom
     if (!sent) {
       clearTimeout(timer);
       pendingRequests.delete(id);
-      reject(new Error("Failed to send command to Chrome Native stdout"));
+      reject(new Error("Failed to send command to Chrome Extension"));
     }
   });
 }
 
 /**
- * Starts local WebSocket server for MCP server / CLI agents
+ * Starts local WebSocket server for MCP server / CLI agents & Extension direct link
  */
 export function startLocalIPCDaemon() {
   if (wsServer) return;
@@ -109,14 +119,22 @@ export function startLocalIPCDaemon() {
 
   wsServer.on("connection", (socket: WebSocket) => {
     activeSockets.add(socket);
-    console.error(`[NativeBridge] Agent client connected (Total: ${activeSockets.size})`);
+    console.error(`[NativeBridge] Client connected (Total: ${activeSockets.size})`);
 
     socket.on("message", async (data: Buffer) => {
       try {
-        const cmd = JSON.parse(data.toString());
-        // For long batch tasks, use 10-minute timeout
-        const timeout = cmd.command === "batch_execute" ? 600000 : 60000;
-        const res = await sendToExtensionAsync(cmd, timeout);
+        const msg = JSON.parse(data.toString());
+
+        // Check if this connection is the Chrome Extension
+        if (msg && (msg.isExtension || msg.role === "extension" || (typeof msg.id === "number" && (msg.ok !== undefined || msg.pong !== undefined || msg.event !== undefined)))) {
+          extensionSocket = socket;
+          handleIncomingChromeMessage(msg);
+          return;
+        }
+
+        // Otherwise it is an Agent / CLI command request
+        const timeout = msg.command === "batch_execute" ? 600000 : 60000;
+        const res = await sendToExtensionAsync(msg, timeout);
         socket.send(JSON.stringify(res));
       } catch (err: any) {
         socket.send(JSON.stringify({ ok: false, error: err.message }));
@@ -125,7 +143,11 @@ export function startLocalIPCDaemon() {
 
     socket.on("close", () => {
       activeSockets.delete(socket);
-      console.error(`[NativeBridge] Agent client disconnected (Remaining: ${activeSockets.size})`);
+      if (extensionSocket === socket) {
+        extensionSocket = null;
+        console.error("[NativeBridge] Extension WebSocket disconnected");
+      }
+      console.error(`[NativeBridge] Client disconnected (Remaining: ${activeSockets.size})`);
     });
   });
 
@@ -138,7 +160,7 @@ export function startLocalIPCDaemon() {
 export function broadcastToAgents(event: any) {
   const json = JSON.stringify(event);
   for (const socket of activeSockets) {
-    if (socket.readyState === WebSocket.OPEN) {
+    if (socket !== extensionSocket && socket.readyState === WebSocket.OPEN) {
       try {
         socket.send(json);
       } catch (e) {}

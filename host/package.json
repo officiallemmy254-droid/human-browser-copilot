@@ -14,6 +14,8 @@
   },
   "dependencies": {
     "@modelcontextprotocol/sdk": "^1.6.0",
+    "axe-core": "^4.13.0",
+    "devtools-protocol": "^0.0.1686980",
     "playwright-core": "^1.50.1",
     "ws": "^8.18.0",
     "zod": "^3.24.2"

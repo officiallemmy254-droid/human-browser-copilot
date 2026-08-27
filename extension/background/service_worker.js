@@ -1,5 +1,5 @@
 // Human Browser Copilot - Background Service Worker (Resilient & Long-Running Tasks)
-import { attachToTab, detachDebugger, humanMouseMove, humanClick, humanType, humanScroll, humanKeypress, humanClear, captureScreenshot, setProfile, setPaused, sendCDP, evaluateScript, waitForSelector, waitForElementDisappears, waitForText, waitForUrl, waitForNetworkIdle, extractTableData, extractElements, extractStructuredData, triggerGarbageCollection, smartType, smartClear, humanHotkey, downloadMedia } from "./debugger_cdp.js";
+import { attachToTab, detachDebugger, humanMouseMove, humanClick, humanType, humanScroll, humanKeypress, humanClear, captureScreenshot, setProfile, setPaused, sendCDP, evaluateScript, waitForSelector, waitForElementDisappears, waitForText, waitForUrl, waitForNetworkIdle, extractTableData, extractElements, extractStructuredData, triggerGarbageCollection, smartType, smartClear, humanHotkey, downloadMedia, getAccessibilityTree } from "./debugger_cdp.js";
 import { evaluateActionSecurity, createApprovalRequest, resolveApproval, getPendingApprovals } from "./security_guard.js";
 import { startKeepalive, registerOffscreenPort, setTaskActive, isTaskActive } from "./keepalive.js";
 import { executeWorkflow, pauseWorkflow, resumeWorkflow, cancelWorkflow, getWorkflowStatus, setBroadcastCallback } from "./workflow_engine.js";
@@ -72,6 +72,56 @@ function connectToNativeHost() {
   }
 }
 
+let extensionWs = null;
+function connectDirectWebSocket() {
+  if (extensionWs && (extensionWs.readyState === WebSocket.OPEN || extensionWs.readyState === WebSocket.CONNECTING)) return;
+
+  try {
+    extensionWs = new WebSocket("ws://localhost:9333");
+
+    extensionWs.onopen = () => {
+      console.log("[ServiceWorker] Direct WebSocket connected to ws://localhost:9333");
+      try {
+        extensionWs.send(JSON.stringify({ isExtension: true, event: "EXTENSION_READY" }));
+      } catch (e) {}
+      startKeepalive();
+    };
+
+    extensionWs.onmessage = (event) => {
+      try {
+        const msg = JSON.parse(event.data);
+        console.log("[DirectWS -> Extension]", msg);
+        handleAgentCommand(msg);
+      } catch (err) {}
+    };
+
+    extensionWs.onclose = () => {
+      extensionWs = null;
+      setTimeout(connectDirectWebSocket, 3000);
+    };
+
+    extensionWs.onerror = () => {
+      try { extensionWs.close(); } catch (e) {}
+    };
+  } catch (e) {
+    setTimeout(connectDirectWebSocket, 3000);
+  }
+}
+
+// Immediately establish connections
+connectToNativeHost();
+connectDirectWebSocket();
+
+chrome.runtime.onInstalled.addListener(() => {
+  connectToNativeHost();
+  connectDirectWebSocket();
+});
+
+chrome.runtime.onStartup.addListener(() => {
+  connectToNativeHost();
+  connectDirectWebSocket();
+});
+
 function scheduleNativeReconnect() {
   if (reconnectTimer) return;
   const delay = Math.min(1000 * Math.pow(1.5, reconnectAttempts++), 15000);
@@ -88,6 +138,14 @@ function sendToNativeHost(msg) {
       return true;
     } catch (e) {
       console.warn("[NativeHost] Send failed:", e);
+    }
+  }
+  if (extensionWs && extensionWs.readyState === WebSocket.OPEN) {
+    try {
+      extensionWs.send(JSON.stringify(msg));
+      return true;
+    } catch (e) {
+      console.warn("[DirectWS] Send failed:", e);
     }
   }
   return false;
@@ -178,6 +236,13 @@ async function handleAgentCommand(msg) {
       }
       activeTabId = tab.id;
       sendToNativeHost({ id, ok: true, result: { navigated: true, url: params.url, tabId: tab.id } });
+      return;
+    }
+
+    if (command === "get_a11y_tree") {
+      if (!tab || !tab.id) throw new Error("No active tab found for accessibility tree extraction");
+      const a11yResult = await getAccessibilityTree(tab.id, params.includeHidden);
+      sendToNativeHost({ id, ok: true, result: a11yResult });
       return;
     }
 

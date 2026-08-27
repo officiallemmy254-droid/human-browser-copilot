@@ -197,6 +197,51 @@ export async function waitForSelector(tabId, selector, timeoutMs = 30000) {
 }
 
 /**
+ * Direct Accessibility Tree Extractor (CDP Accessibility.getFullAXTree + Semantic DOM)
+ */
+export async function getAccessibilityTree(tabId, includeHidden = false) {
+  try {
+    await sendCDP(tabId, "Accessibility.enable", {}).catch(() => {});
+    const axRes = await sendCDP(tabId, "Accessibility.getFullAXTree", {}).catch(() => null);
+    if (axRes && axRes.nodes) {
+      const url = await evaluateScript(tabId, "window.location.href").catch(() => "");
+      const title = await evaluateScript(tabId, "document.title").catch(() => "");
+      return { ok: true, tree: axRes.nodes, url, title };
+    }
+  } catch (e) {}
+
+  const tree = await evaluateScript(tabId, `
+    (function() {
+      function getSemanticTree(root) {
+        const nodes = [];
+        const elements = root.querySelectorAll('a, button, input, textarea, select, [role], [tabindex], [contenteditable], h1, h2, h3, p, form');
+        elements.forEach(el => {
+          const style = window.getComputedStyle(el);
+          if (style.display === 'none' || style.visibility === 'hidden') return;
+          nodes.push({
+            role: el.getAttribute('role') || el.tagName.toLowerCase(),
+            name: el.getAttribute('aria-label') || el.getAttribute('placeholder') || el.getAttribute('title') || el.innerText?.slice(0, 80) || '',
+            value: el.value || el.getAttribute('value'),
+            disabled: el.disabled || el.getAttribute('aria-disabled') === 'true',
+            focused: document.activeElement === el,
+            selector: el.id ? '#' + el.id : (el.className ? '.' + String(el.className).split(' ')[0] : el.tagName.toLowerCase())
+          });
+        });
+        return nodes;
+      }
+      return {
+        url: window.location.href,
+        title: document.title,
+        tree: getSemanticTree(document.body),
+        rawHtmlLength: document.documentElement.outerHTML.length
+      };
+    })()
+  `);
+
+  return { ok: true, ...(tree || {}) };
+}
+
+/**
  * Smart Waiter for DOM Element Disappearance
  */
 export async function waitForElementDisappears(tabId, selector, timeoutMs = 30000) {
