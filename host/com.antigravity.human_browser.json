@@ -1,0 +1,10 @@
+{
+  "name": "com.antigravity.human_browser",
+  "description": "Human Browser Copilot Native Messaging Host",
+  "path": "C:\\\\Users\\\\SIR\\\\human-browser\\\\host\\\\run_host.bat",
+  "type": "stdio",
+  "allowed_origins": [
+    "chrome-extension://*/",
+    "chrome-extension://*"
+  ]
+}

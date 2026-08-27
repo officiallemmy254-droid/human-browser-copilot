@@ -1,0 +1,59 @@
+{
+  "manifest_version": 3,
+  "name": "Human Browser Copilot",
+  "version": "1.0.0",
+  "description": "Human-like AI browser copilot with organic kinematics, stealth evasion, and Antigravity/OpenCode bridge",
+  "permissions": [
+    "debugger",
+    "sidePanel",
+    "nativeMessaging",
+    "storage",
+    "tabs",
+    "activeTab",
+    "scripting",
+    "offscreen"
+  ],
+  "host_permissions": [
+    "<all_urls>"
+  ],
+  "background": {
+    "service_worker": "background/service_worker.js",
+    "type": "module"
+  },
+  "side_panel": {
+    "default_path": "sidepanel/sidepanel.html"
+  },
+  "action": {
+    "default_title": "Open Human Browser Copilot"
+  },
+  "content_scripts": [
+    {
+      "matches": [
+        "<all_urls>"
+      ],
+      "css": [
+        "content/overlay.css"
+      ],
+      "js": [
+        "content/tracer.js",
+        "content/highlighter.js",
+        "content/captcha_detector.js"
+      ],
+      "run_at": "document_start",
+      "all_frames": true
+    }
+  ],
+  "icons": {
+    "16": "icons/icon16.png",
+    "48": "icons/icon48.png",
+    "128": "icons/icon128.png"
+  },
+  "commands": {
+    "emergency_takeover": {
+      "suggested_key": {
+        "default": "Alt+Shift+X"
+      },
+      "description": "Emergency Agent Pause / Takeover"
+    }
+  }
+}

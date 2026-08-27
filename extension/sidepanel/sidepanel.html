@@ -1,0 +1,95 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>Human Browser Copilot</title>
+  <link rel="stylesheet" href="sidepanel.css">
+</head>
+<body>
+  <div class="header">
+    <div class="logo">
+      <div class="status-orb" id="connection-orb"></div>
+      <span class="title">Human Browser</span>
+    </div>
+    <div class="badge" id="mode-badge">Active Tab</div>
+  </div>
+
+  <!-- Alert Banner for CAPTCHA -->
+  <div class="alert-card hidden" id="captcha-alert">
+    <div class="alert-icon">🧩</div>
+    <div class="alert-content">
+      <div class="alert-title">CAPTCHA / Challenge Detected</div>
+      <div class="alert-desc">Agent is paused. Please solve the challenge in the main tab.</div>
+      <button class="btn btn-primary btn-sm" id="btn-captcha-resolved">I Solved It (Resume)</button>
+    </div>
+  </div>
+
+  <!-- Pending Approval Card -->
+  <div class="approval-card hidden" id="approval-box">
+    <div class="approval-header">
+      <span class="shield-icon">🛡️</span>
+      <span class="approval-title">Human Approval Required</span>
+    </div>
+    <div class="approval-reason" id="approval-reason-text">...</div>
+    <div class="approval-params" id="approval-params-text">...</div>
+    <div class="approval-actions">
+      <button class="btn btn-success" id="btn-approve">Approve Action</button>
+      <button class="btn btn-danger" id="btn-reject">Reject</button>
+    </div>
+  </div>
+
+  <!-- Profile & Controls Section -->
+  <div class="section">
+    <div class="section-title">Behavior Profile</div>
+    <div class="profile-grid">
+      <button class="profile-btn active" data-profile="natural">🚶 Natural</button>
+      <button class="profile-btn" data-profile="speedy">🏎️ Speedy</button>
+      <button class="profile-btn" data-profile="deep_reader">📖 Reader</button>
+      <button class="profile-btn" data-profile="ghost_stealth">🥷 Ghost</button>
+    </div>
+  </div>
+
+  <!-- Visual Overlay Toggles -->
+  <div class="section">
+    <div class="section-title">Visual HUD Toggles</div>
+    <div class="toggle-row">
+      <span>Laser Cursor Tracer</span>
+      <label class="switch">
+        <input type="checkbox" id="toggle-tracer" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+    <div class="toggle-row">
+      <span>Element Number Labels</span>
+      <label class="switch">
+        <input type="checkbox" id="toggle-highlighter" checked>
+        <span class="slider"></span>
+      </label>
+    </div>
+  </div>
+
+  <!-- Live Action & Thought Log -->
+  <div class="section flex-grow">
+    <div class="section-header">
+      <div class="section-title">Live Activity Log</div>
+      <button class="btn-clear" id="btn-clear-log">Clear</button>
+    </div>
+    <div class="log-container" id="log-container">
+      <div class="log-entry system">
+        <span class="time">--:--</span>
+        <span class="text">Human Browser Copilot initialized & ready.</span>
+      </div>
+    </div>
+  </div>
+
+  <!-- Emergency Footer -->
+  <div class="footer">
+    <button class="btn btn-warning full-width" id="btn-takeover">
+      <span id="takeover-icon">⏸️</span> <span id="takeover-text">Emergency Pause (Esc)</span>
+    </button>
+  </div>
+
+  <script src="sidepanel.js"></script>
+</body>
+</html>

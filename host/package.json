@@ -1,0 +1,25 @@
+{
+  "name": "human-browser-host",
+  "version": "1.0.0",
+  "description": "Native Messaging Host & MCP Server for Human Browser Copilot",
+  "main": "dist/index.js",
+  "scripts": {
+    "build": "tsup src/index.ts --format cjs,esm --dts",
+    "start": "tsx src/index.ts",
+    "mcp": "tsx src/index.ts --mcp",
+    "native": "tsx src/index.ts --native"
+  },
+  "dependencies": {
+    "@modelcontextprotocol/sdk": "^1.6.0",
+    "playwright-core": "^1.50.1",
+    "ws": "^8.18.0",
+    "zod": "^3.24.2"
+  },
+  "devDependencies": {
+    "@types/node": "^22.13.5",
+    "@types/ws": "^8.5.14",
+    "tsup": "^8.3.6",
+    "tsx": "^4.19.3",
+    "typescript": "^5.7.3"
+  }
+}
